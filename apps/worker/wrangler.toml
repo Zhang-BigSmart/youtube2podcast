@@ -2,6 +2,24 @@ name = "youtube2podcast-worker"
 main = "src/index.ts"
 compatibility_date = "2024-06-24"
 
+[[d1_databases]]
+binding = "DB"
+database_name = "youtube2podcast-local"
+database_id = "local-youtube2podcast"
+
+[[r2_buckets]]
+binding = "AUDIO_BUCKET"
+bucket_name = "youtube2podcast-audio-local"
+
+[[queues.producers]]
+binding = "CONVERSION_QUEUE"
+queue = "youtube2podcast-conversions-local"
+
+[[queues.consumers]]
+queue = "youtube2podcast-conversions-local"
+max_batch_size = 1
+max_batch_timeout = 30
+
 [vars]
 ADMIN_TOKEN = "local-admin-token"
 RSS_TOKEN = "local-rss-token"
