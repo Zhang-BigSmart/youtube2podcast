@@ -1,0 +1,16 @@
+{
+  "name": "youtube2podcast",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:worker": "pnpm --filter @youtube2podcast/worker dev",
+    "dev:web": "pnpm --filter @youtube2podcast/web dev",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "build": "pnpm -r build"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "@youtube2podcast/worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cloudflare/workers-types": "^4.20240620.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.1",
+    "wrangler": "^3.78.0"
+  }
+}
