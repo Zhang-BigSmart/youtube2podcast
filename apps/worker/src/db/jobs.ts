@@ -49,12 +49,30 @@ export async function updateJobStatus(
   status: JobStatus,
   fields: { errorMessage?: string | null; episodeId?: string | null; provider?: string | null; completedAt?: string | null } = {}
 ): Promise<void> {
-  await db.prepare(
-    `UPDATE jobs
-     SET status = ?, error_message = COALESCE(?, error_message), episode_id = COALESCE(?, episode_id),
-         provider = COALESCE(?, provider), completed_at = COALESCE(?, completed_at), updated_at = ?
-     WHERE id = ?`
-  ).bind(status, fields.errorMessage ?? null, fields.episodeId ?? null, fields.provider ?? null, fields.completedAt ?? null, new Date().toISOString(), id).run()
+  const assignments = ['status = ?', 'updated_at = ?']
+  const values: Array<string | null> = [status, new Date().toISOString()]
+
+  if ('errorMessage' in fields) {
+    assignments.push('error_message = ?')
+    values.push(fields.errorMessage ?? null)
+  }
+
+  if ('episodeId' in fields) {
+    assignments.push('episode_id = ?')
+    values.push(fields.episodeId ?? null)
+  }
+
+  if ('provider' in fields) {
+    assignments.push('provider = ?')
+    values.push(fields.provider ?? null)
+  }
+
+  if ('completedAt' in fields) {
+    assignments.push('completed_at = ?')
+    values.push(fields.completedAt ?? null)
+  }
+
+  await db.prepare(`UPDATE jobs SET ${assignments.join(', ')} WHERE id = ?`).bind(...values, id).run()
 }
 
 export async function incrementAttempt(db: D1Database, id: string): Promise<void> {
