@@ -20,6 +20,10 @@ function formatDuration(seconds: number): string {
 export function renderRss(episodes: EpisodeRecord[], env: Pick<Env, 'PUBLIC_BASE_URL' | 'RSS_TOKEN'>): string {
   const items = episodes.map((episode) => {
     const audioUrl = `${env.PUBLIC_BASE_URL}/media/${env.RSS_TOKEN}/${episode.id}/audio`
+    const episodeImage = episode.thumbnail_url
+      ? `<itunes:image href="${escapeXml(episode.thumbnail_url)}" />`
+      : ''
+
     return `
       <item>
         <title>${escapeXml(episode.title)}</title>
@@ -28,6 +32,7 @@ export function renderRss(episodes: EpisodeRecord[], env: Pick<Env, 'PUBLIC_BASE
         <guid isPermaLink="false">${escapeXml(episode.guid)}</guid>
         <itunes:duration>${formatDuration(episode.duration_seconds)}</itunes:duration>
         <itunes:author>${escapeXml(episode.channel_title)}</itunes:author>
+        ${episodeImage}
         <enclosure url="${escapeXml(audioUrl)}" length="${episode.audio_file_size}" type="${escapeXml(episode.audio_mime_type)}" />
       </item>`
   }).join('')
