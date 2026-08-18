@@ -1,4 +1,4 @@
-import type { EpisodeRecord } from '../db/episodes'
+import type { EpisodeRecord } from '../db/episodes.js'
 
 function escapeXml(value: string): string {
   return value

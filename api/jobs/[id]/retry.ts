@@ -1,4 +1,4 @@
-import { vercelHandler } from '../../../apps/worker/src/vercel-handler'
+import { vercelHandler } from '../../../apps/worker/src/vercel-handler.js'
 
 export const config = { maxDuration: 300 }
 

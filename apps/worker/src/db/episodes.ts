@@ -1,5 +1,5 @@
-import type { Env } from '../env'
-import { getSupabase } from '../env'
+import type { Env } from '../env.js'
+import { getSupabase } from '../env.js'
 
 export type EpisodeRecord = {
   id: string

@@ -1,7 +1,7 @@
-import { isValidToken } from '../auth'
-import { getEpisode } from '../db/episodes'
-import type { Env } from '../env'
-import { notFound } from '../responses'
+import { isValidToken } from '../auth.js'
+import { getEpisode } from '../db/episodes.js'
+import type { Env } from '../env.js'
+import { notFound } from '../responses.js'
 
 export type ParsedRange = { start: number; end: number }
 

@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { waitUntil } from '@vercel/functions'
-import { getEnv } from './env'
-import { handleRequest } from './router'
+import { getEnv } from './env.js'
+import { handleRequest } from './router.js'
 
 /**
  * 用途：把 Vercel Node 的 req 转成 Fetch Request。

@@ -1,10 +1,10 @@
 import { put } from '@vercel/blob'
-import type { Env } from '../env'
-import { getJob, updateJobStatus } from '../db/jobs'
-import { insertEpisode } from '../db/episodes'
-import { createId } from '../ids'
-import { createAudioProvider } from '../providers'
-import type { AudioProviderResult } from '../providers/types'
+import type { Env } from '../env.js'
+import { getJob, updateJobStatus } from '../db/jobs.js'
+import { insertEpisode } from '../db/episodes.js'
+import { createId } from '../ids.js'
+import { createAudioProvider } from '../providers/index.js'
+import type { AudioProviderResult } from '../providers/types.js'
 
 type StoredAudio = { size: number; contentType: string; url: string }
 

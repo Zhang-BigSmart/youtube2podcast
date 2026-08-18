@@ -1,13 +1,13 @@
-import type { Env, RuntimeContext } from './env'
-import { isAuthorizedAdmin, isValidToken } from './auth'
-import { json, notFound, text } from './responses'
-import { parseYouTubeVideoId } from './youtube'
-import { createId } from './ids'
-import { getEpisodeByVideoId, listEpisodes } from './db/episodes'
-import { getJob, incrementAttempt, insertJob, listJobs } from './db/jobs'
-import { convertJob } from './services/converter'
-import { renderRss } from './services/rss'
-import { serveAudio } from './services/media'
+import type { Env, RuntimeContext } from './env.js'
+import { isAuthorizedAdmin, isValidToken } from './auth.js'
+import { json, notFound, text } from './responses.js'
+import { parseYouTubeVideoId } from './youtube.js'
+import { createId } from './ids.js'
+import { getEpisodeByVideoId, listEpisodes } from './db/episodes.js'
+import { getJob, incrementAttempt, insertJob, listJobs } from './db/jobs.js'
+import { convertJob } from './services/converter.js'
+import { renderRss } from './services/rss.js'
+import { serveAudio } from './services/media.js'
 
 /**
  * 用途：把 Vercel 重写后的 /api/rss、/api/media 还原成业务路径。

@@ -1,7 +1,7 @@
-import type { Env } from '../env'
-import { MockAudioProvider } from './mock'
-import { FailoverAudioProvider, YoutubeDownloadInfoProvider, YoutubeToMp315Provider } from './rapidapi'
-import type { AudioProvider } from './types'
+import type { Env } from '../env.js'
+import { MockAudioProvider } from './mock.js'
+import { FailoverAudioProvider, YoutubeDownloadInfoProvider, YoutubeToMp315Provider } from './rapidapi.js'
+import type { AudioProvider } from './types.js'
 
 /**
  * 用途：按环境变量构造音频供应商。

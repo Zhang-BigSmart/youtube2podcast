@@ -1,4 +1,4 @@
-import type { AudioProvider, AudioProviderResult } from './types'
+import type { AudioProvider, AudioProviderResult } from './types.js'
 
 /**
  * 用途：不调外部 API 的假音频，便于冒烟。

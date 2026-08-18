@@ -1,4 +1,4 @@
-import type { AudioProvider, AudioProviderResult } from './types'
+import type { AudioProvider, AudioProviderResult } from './types.js'
 
 const YT15_HOST = 'youtube-to-mp315.p.rapidapi.com'
 const DOWNLOAD_INFO_HOST = 'youtube-download-info-api.p.rapidapi.com'
