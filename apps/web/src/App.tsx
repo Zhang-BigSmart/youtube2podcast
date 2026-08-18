@@ -13,16 +13,24 @@ export function App() {
 
   async function refresh() {
     if (!adminToken) return
-    setJobs(await listJobs(adminToken))
-    setEpisodes(await listEpisodes(adminToken))
+    try {
+      setJobs(await listJobs(adminToken))
+      setEpisodes(await listEpisodes(adminToken))
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error))
+    }
   }
 
   async function submit() {
     localStorage.setItem('adminToken', adminToken)
-    const result = await createJob(adminToken, youtubeUrl)
-    setMessage(JSON.stringify(result))
-    setYoutubeUrl('')
-    await refresh()
+    try {
+      const result = await createJob(adminToken, youtubeUrl)
+      setMessage(JSON.stringify(result))
+      setYoutubeUrl('')
+      await refresh()
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : String(error))
+    }
   }
 
   useEffect(() => {

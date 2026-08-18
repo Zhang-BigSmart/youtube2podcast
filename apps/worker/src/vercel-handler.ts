@@ -1,6 +1,7 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { waitUntil } from '@vercel/functions'
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getEnv } from './env.js'
+import { json } from './responses.js'
 import { handleRequest } from './router.js'
 
 /**
@@ -15,7 +16,9 @@ function toFetchRequest(req: VercelRequest): Request {
   const host = headerValue(req.headers['x-forwarded-host']) ?? headerValue(req.headers.host) ?? 'localhost'
   const url = `${proto}://${host}${req.url ?? '/'}`
   const headers = new Headers()
+  const skip = new Set(['content-length', 'transfer-encoding', 'connection', 'host'])
   for (const [key, value] of Object.entries(req.headers)) {
+    if (skip.has(key.toLowerCase())) continue
     if (typeof value === 'string') headers.set(key, value)
     else if (Array.isArray(value)) headers.set(key, value.join(', '))
   }
@@ -27,7 +30,7 @@ function toFetchRequest(req: VercelRequest): Request {
 
   let body: BodyInit | undefined
   if (Buffer.isBuffer(req.body)) {
-    body = new Uint8Array(req.body)
+    body = Uint8Array.from(req.body)
   } else if (typeof req.body === 'string') {
     body = req.body
   } else if (req.body != null) {
@@ -62,14 +65,20 @@ async function writeFetchResponse(res: VercelResponse, response: Response): Prom
  * 用途：Vercel Serverless 入口，转发到 handleRequest，并用 waitUntil 跑转换。
  * 入参：VercelRequest / VercelResponse。
  * 返回值：无（写入 res）。
- * 异常：缺环境变量或未捕获错误时由平台记 500。
+ * 异常：缺环境变量或未捕获错误时返回 500 JSON，不再让平台记成无响应。
  */
 export async function vercelHandler(req: VercelRequest, res: VercelResponse): Promise<void> {
-  const request = toFetchRequest(req)
-  const response = await handleRequest(request, getEnv(), {
-    waitUntil: (promise) => {
-      waitUntil(promise)
-    }
-  })
-  await writeFetchResponse(res, response)
+  try {
+    const request = toFetchRequest(req)
+    const response = await handleRequest(request, getEnv(), {
+      waitUntil: (promise) => {
+        waitUntil(promise)
+      }
+    })
+    await writeFetchResponse(res, response)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown function error'
+    const response = json({ error: message }, { status: 500 })
+    await writeFetchResponse(res, response)
+  }
 }
