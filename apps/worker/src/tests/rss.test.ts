@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import type { Env } from '../env'
 import { renderRss } from '../services/rss'
 
 describe('renderRss', () => {
@@ -13,8 +12,8 @@ describe('renderRss', () => {
         description: 'A test episode',
         channel_title: 'Test Channel',
         thumbnail_url: null,
-        r2_audio_key: 'audio/ep_1.mp3',
-        r2_image_key: null,
+        blob_audio_url: 'https://blob.example/audio/rss-secret/ep_1.mp3',
+        blob_image_url: null,
         audio_mime_type: 'audio/mpeg',
         audio_file_size: 1234,
         duration_seconds: 60,
@@ -22,14 +21,11 @@ describe('renderRss', () => {
         published_at: '2026-06-24T00:00:00.000Z',
         created_at: '2026-06-24T00:00:00.000Z'
       }
-    ], {
-      PUBLIC_BASE_URL: 'https://pod.example.com',
-      RSS_TOKEN: 'rss-secret'
-    } as Env)
+    ])
 
     expect(rss).toContain('<rss version="2.0"')
     expect(rss).toContain('<title>Test Episode</title>')
-    expect(rss).toContain('url="https://pod.example.com/media/rss-secret/ep_1/audio"')
+    expect(rss).toContain('url="https://blob.example/audio/rss-secret/ep_1.mp3"')
     expect(rss).toContain('type="audio/mpeg"')
     expect(rss).toContain('length="1234"')
   })

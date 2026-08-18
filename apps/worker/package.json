@@ -3,16 +3,19 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
     "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "@cloudflare/workers-types": "^4.20240620.0"
+    "@supabase/supabase-js": "^2.57.4",
+    "@vercel/blob": "^0.27.3",
+    "@vercel/functions": "^2.2.13",
+    "@vercel/node": "^5.3.24"
   },
   "devDependencies": {
-    "vitest": "^2.1.1",
-    "wrangler": "^3.78.0"
+    "@types/node": "^22.15.3",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.1"
   }
 }

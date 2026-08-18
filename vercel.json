@@ -1,0 +1,14 @@
+{
+  "buildCommand": "pnpm --filter @youtube2podcast/web build",
+  "outputDirectory": "apps/web/dist",
+  "framework": null,
+  "functions": {
+    "api/**/*.ts": {
+      "maxDuration": 300
+    }
+  },
+  "rewrites": [
+    { "source": "/rss/:path*", "destination": "/api/rss/:path*" },
+    { "source": "/media/:path*", "destination": "/api/media/:path*" }
+  ]
+}

@@ -1,6 +1,16 @@
+# deps & build
 node_modules
 dist
-.wrangler
-.dev.vars
+
+# env & local
 .env
+.env*.local
+.dev.vars
 *.local
+
+# platform
+.vercel
+.wrangler
+
+# os
+.DS_Store

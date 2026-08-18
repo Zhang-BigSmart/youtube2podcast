@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { createJob, listEpisodes, listJobs, retryJob, type Episode, type Job } from './api'
 import './styles.css'
 
-const rssUrl = import.meta.env.VITE_PUBLIC_RSS_URL ?? 'http://localhost:8787/rss/change-me-rss-token.xml'
+const rssUrl = import.meta.env.VITE_PUBLIC_RSS_URL ?? '/rss/change-me-rss-token.xml'
 
 export function App() {
   const [adminToken, setAdminToken] = useState(() => localStorage.getItem('adminToken') ?? '')

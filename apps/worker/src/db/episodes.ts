@@ -1,3 +1,6 @@
+import type { Env } from '../env'
+import { getSupabase } from '../env'
+
 export type EpisodeRecord = {
   id: string
   youtube_video_id: string
@@ -6,8 +9,8 @@ export type EpisodeRecord = {
   description: string
   channel_title: string
   thumbnail_url: string | null
-  r2_audio_key: string
-  r2_image_key: string | null
+  blob_audio_url: string
+  blob_image_url: string | null
   audio_mime_type: string
   audio_file_size: number
   duration_seconds: number
@@ -16,40 +19,67 @@ export type EpisodeRecord = {
   created_at: string
 }
 
-export async function insertEpisode(db: D1Database, episode: EpisodeRecord): Promise<void> {
-  await db.prepare(
-    `INSERT INTO episodes
-     (id, youtube_video_id, youtube_url, title, description, channel_title, thumbnail_url, r2_audio_key, r2_image_key,
-      audio_mime_type, audio_file_size, duration_seconds, guid, published_at, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).bind(
-    episode.id,
-    episode.youtube_video_id,
-    episode.youtube_url,
-    episode.title,
-    episode.description,
-    episode.channel_title,
-    episode.thumbnail_url,
-    episode.r2_audio_key,
-    episode.r2_image_key,
-    episode.audio_mime_type,
-    episode.audio_file_size,
-    episode.duration_seconds,
-    episode.guid,
-    episode.published_at,
-    episode.created_at
-  ).run()
+/**
+ * 用途：把 PostgREST 错误转成异常。
+ * 入参：Supabase error 或 null。
+ * 返回值：无。
+ * 异常：error 非空时抛出 message。
+ */
+function throwIfError(error: { message: string } | null): void {
+  if (error) throw new Error(error.message)
 }
 
-export async function getEpisode(db: D1Database, id: string): Promise<EpisodeRecord | null> {
-  return await db.prepare('SELECT * FROM episodes WHERE id = ?').bind(id).first<EpisodeRecord>()
+/**
+ * 用途：写入一条可出现在 RSS 中的 episode。
+ * 入参：env、episode 记录（含 Blob 音频 URL）。
+ * 返回值：无。
+ * 异常：youtube_video_id / guid 冲突或网络失败时抛错。
+ */
+export async function insertEpisode(env: Env, episode: EpisodeRecord): Promise<void> {
+  const { error } = await getSupabase(env).from('episodes').insert(episode)
+  throwIfError(error)
 }
 
-export async function getEpisodeByVideoId(db: D1Database, videoId: string): Promise<EpisodeRecord | null> {
-  return await db.prepare('SELECT * FROM episodes WHERE youtube_video_id = ?').bind(videoId).first<EpisodeRecord>()
+/**
+ * 用途：按 episode id 读取。
+ * 入参：env、episode id。
+ * 返回值：记录或 null。
+ * 异常：查询失败时抛错。
+ */
+export async function getEpisode(env: Env, id: string): Promise<EpisodeRecord | null> {
+  const { data, error } = await getSupabase(env).from('episodes').select('*').eq('id', id).maybeSingle()
+  throwIfError(error)
+  return data as EpisodeRecord | null
 }
 
-export async function listEpisodes(db: D1Database, limit = 100): Promise<EpisodeRecord[]> {
-  const result = await db.prepare('SELECT * FROM episodes ORDER BY created_at DESC LIMIT ?').bind(limit).all<EpisodeRecord>()
-  return result.results ?? []
+/**
+ * 用途：按 YouTube 视频 id 查重。
+ * 入参：env、youtube_video_id。
+ * 返回值：已存在的 episode 或 null。
+ * 异常：查询失败时抛错。
+ */
+export async function getEpisodeByVideoId(env: Env, videoId: string): Promise<EpisodeRecord | null> {
+  const { data, error } = await getSupabase(env)
+    .from('episodes')
+    .select('*')
+    .eq('youtube_video_id', videoId)
+    .maybeSingle()
+  throwIfError(error)
+  return data as EpisodeRecord | null
+}
+
+/**
+ * 用途：列出最近 episode，供 RSS 与 H5。
+ * 入参：env、条数上限（默认 100）。
+ * 返回值：按 created_at 倒序的数组。
+ * 异常：查询失败时抛错。
+ */
+export async function listEpisodes(env: Env, limit = 100): Promise<EpisodeRecord[]> {
+  const { data, error } = await getSupabase(env)
+    .from('episodes')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  throwIfError(error)
+  return (data ?? []) as EpisodeRecord[]
 }

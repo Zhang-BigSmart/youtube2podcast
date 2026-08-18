@@ -5,6 +5,12 @@ import { notFound } from '../responses'
 
 export type ParsedRange = { start: number; end: number }
 
+/**
+ * 用途：解析 Range 头（测试与兼容保留；RSS 已改 Blob 直链）。
+ * 入参：header、文件总大小。
+ * 返回值：闭区间字节范围或 null。
+ * 异常：无。非法或越界返回 null。
+ */
 export function parseRangeHeader(header: string | null, size: number): ParsedRange | null {
   if (!header) return null
   const match = header.match(/^bytes=(\d+)-(\d*)$/)
@@ -18,39 +24,23 @@ export function parseRangeHeader(header: string | null, size: number): ParsedRan
   return { start, end: Math.min(end, size - 1) }
 }
 
+/**
+ * 用途：校验 RSS token 后 302 到 Blob 公开 URL。
+ * 入参：request、env。
+ * 返回值：302 或 404。
+ * 异常：查库失败时向上抛。
+ * 边界：无对应 episode 或 token 错误时统一 404，不暴露是否存在。
+ */
 export async function serveAudio(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url)
-  const match = url.pathname.match(/^\/media\/([^/]+)\/([^/]+)\/audio$/)
+  const match = url.pathname.match(/\/media\/([^/]+)\/([^/]+)\/audio$/)
   if (!match) return notFound()
 
   const [, token, episodeId] = match
   if (!isValidToken(token, env.RSS_TOKEN)) return notFound()
 
-  const episode = await getEpisode(env.DB, episodeId)
+  const episode = await getEpisode(env, episodeId)
   if (!episode) return notFound()
 
-  const head = await env.AUDIO_BUCKET.head(episode.r2_audio_key)
-  if (!head) return notFound()
-
-  const size = head.size
-  const range = parseRangeHeader(request.headers.get('range'), size)
-  const object = await env.AUDIO_BUCKET.get(
-    episode.r2_audio_key,
-    range ? { range: { offset: range.start, length: range.end - range.start + 1 } } : undefined
-  )
-  if (!object) return notFound()
-
-  const headers = new Headers()
-  headers.set('accept-ranges', 'bytes')
-  headers.set('content-type', episode.audio_mime_type)
-  headers.set('cache-control', 'private, max-age=3600')
-
-  if (range) {
-    headers.set('content-range', `bytes ${range.start}-${range.end}/${size}`)
-    headers.set('content-length', String(range.end - range.start + 1))
-    return new Response(request.method === 'HEAD' ? null : object.body, { status: 206, headers })
-  }
-
-  headers.set('content-length', String(size))
-  return new Response(request.method === 'HEAD' ? null : object.body, { status: 200, headers })
+  return Response.redirect(episode.blob_audio_url, 302)
 }

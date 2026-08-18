@@ -1,47 +1,73 @@
-import type { Env } from './env'
+import type { Env, RuntimeContext } from './env'
 import { isAuthorizedAdmin, isValidToken } from './auth'
 import { json, notFound, text } from './responses'
 import { parseYouTubeVideoId } from './youtube'
 import { createId } from './ids'
 import { getEpisodeByVideoId, listEpisodes } from './db/episodes'
 import { getJob, incrementAttempt, insertJob, listJobs } from './db/jobs'
+import { convertJob } from './services/converter'
 import { renderRss } from './services/rss'
 import { serveAudio } from './services/media'
 
-export async function handleRequest(request: Request, env: Env): Promise<Response> {
-  const url = new URL(request.url)
+/**
+ * 用途：把 Vercel 重写后的 /api/rss、/api/media 还原成业务路径。
+ * 入参：原始 pathname。
+ * 返回值：供路由匹配的 pathname。
+ * 异常：无。
+ */
+function normalizePath(pathname: string): string {
+  if (pathname.startsWith('/api/rss/') || pathname.startsWith('/api/media/')) {
+    return pathname.slice(4)
+  }
+  return pathname
+}
 
-  if (url.pathname.startsWith('/rss/')) {
-    const token = url.pathname.replace('/rss/', '').replace(/\.xml$/, '')
+/**
+ * 用途：处理 RSS、媒体跳转和管理 API。
+ * 入参：request、env、ctx（提交/重试后 waitUntil 继续转换）。
+ * 返回值：HTTP Response。
+ * 异常：不向外抛；校验失败以 4xx JSON 返回。
+ * 边界：转换不阻塞 202；waitUntil 被掐断时 job 可能停在 pending，可走重试。
+ */
+export async function handleRequest(
+  request: Request,
+  env: Env,
+  ctx: RuntimeContext
+): Promise<Response> {
+  const url = new URL(request.url)
+  const pathname = normalizePath(url.pathname)
+
+  if (pathname.startsWith('/rss/')) {
+    const token = pathname.replace('/rss/', '').replace(/\.xml$/, '')
     if (!isValidToken(token, env.RSS_TOKEN)) return notFound()
-    const episodes = await listEpisodes(env.DB, 100)
-    return new Response(renderRss(episodes, env), {
+    const episodes = await listEpisodes(env, 100)
+    return new Response(renderRss(episodes), {
       headers: { 'content-type': 'application/rss+xml; charset=utf-8' }
     })
   }
 
-  if (url.pathname.startsWith('/media/')) {
+  if (pathname.startsWith('/media/')) {
     return serveAudio(request, env)
   }
 
-  if (url.pathname.startsWith('/api/') && !isAuthorizedAdmin(request, env.ADMIN_TOKEN)) {
+  if (pathname.startsWith('/api/') && !isAuthorizedAdmin(request, env.ADMIN_TOKEN)) {
     return json({ error: 'unauthorized' }, { status: 401 })
   }
 
-  if (request.method === 'POST' && url.pathname === '/api/jobs') {
-    const body = await request.json<{ youtubeUrl?: string }>()
+  if (request.method === 'POST' && pathname === '/api/jobs') {
+    const body = await request.json() as { youtubeUrl?: string }
     const youtubeUrl = body.youtubeUrl ?? ''
     const youtubeVideoId = parseYouTubeVideoId(youtubeUrl)
     if (!youtubeVideoId) return json({ error: 'invalid_youtube_url' }, { status: 400 })
 
-    const existingEpisode = await getEpisodeByVideoId(env.DB, youtubeVideoId)
+    const existingEpisode = await getEpisodeByVideoId(env, youtubeVideoId)
     if (existingEpisode) {
       return json({ episodeId: existingEpisode.id, status: 'completed', alreadyExists: true }, { status: 200 })
     }
 
     const now = new Date().toISOString()
     const jobId = createId('job')
-    await insertJob(env.DB, {
+    await insertJob(env, {
       id: jobId,
       youtube_url: youtubeUrl,
       youtube_video_id: youtubeVideoId,
@@ -54,33 +80,33 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
       updated_at: now,
       completed_at: null
     })
-    await env.CONVERSION_QUEUE.send({ jobId })
+    ctx.waitUntil(convertJob(jobId, env))
     return json({ jobId, status: 'pending' }, { status: 202 })
   }
 
-  if (request.method === 'GET' && url.pathname === '/api/jobs') {
-    return json({ jobs: await listJobs(env.DB) })
+  if (request.method === 'GET' && pathname === '/api/jobs') {
+    return json({ jobs: await listJobs(env) })
   }
 
-  const jobMatch = url.pathname.match(/^\/api\/jobs\/([^/]+)$/)
+  const jobMatch = pathname.match(/^\/api\/jobs\/([^/]+)$/)
   if (request.method === 'GET' && jobMatch) {
-    const job = await getJob(env.DB, jobMatch[1])
+    const job = await getJob(env, jobMatch[1])
     return job ? json(job) : notFound()
   }
 
-  const retryMatch = url.pathname.match(/^\/api\/jobs\/([^/]+)\/retry$/)
+  const retryMatch = pathname.match(/^\/api\/jobs\/([^/]+)\/retry$/)
   if (request.method === 'POST' && retryMatch) {
-    const job = await getJob(env.DB, retryMatch[1])
+    const job = await getJob(env, retryMatch[1])
     if (!job) return notFound()
     if (job.status !== 'failed') return json({ error: 'job_not_failed' }, { status: 409 })
-    await incrementAttempt(env.DB, job.id)
-    await env.CONVERSION_QUEUE.send({ jobId: job.id })
+    await incrementAttempt(env, job.id)
+    ctx.waitUntil(convertJob(job.id, env))
     return json({ jobId: job.id, status: 'pending' })
   }
 
-  if (request.method === 'GET' && url.pathname === '/api/episodes') {
-    return json({ episodes: await listEpisodes(env.DB) })
+  if (request.method === 'GET' && pathname === '/api/episodes') {
+    return json({ episodes: await listEpisodes(env) })
   }
 
-  return text('YouTube2Podcast worker', { status: 200 })
+  return text('YouTube2Podcast', { status: 200 })
 }

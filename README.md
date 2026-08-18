@@ -7,8 +7,8 @@ Personal YouTube-to-private-podcast MVP.
 - Submit one YouTube video URL from the H5 console.
 - Create an async conversion job.
 - Convert through a pluggable audio provider.
-- Store audio in Cloudflare R2.
-- Store jobs and episodes in Cloudflare D1.
+- Store audio in Vercel Blob.
+- Store jobs and episodes in Supabase Postgres.
 - Expose a private RSS feed for Apple Podcasts.
 
 ## Local setup
@@ -16,60 +16,54 @@ Personal YouTube-to-private-podcast MVP.
 ```bash
 pnpm install
 cp .env.example .env
-cp wrangler.toml.example wrangler.toml
-pnpm test
-pnpm typecheck
 ```
 
-## Cloudflare resources
-
-Create:
+Fill `.env`, then in Supabase SQL Editor run `apps/worker/src/db/schema.sql`.
 
 ```bash
-wrangler d1 create youtube2podcast
-wrangler r2 bucket create youtube2podcast-audio
-wrangler queues create youtube2podcast-conversions
+pnpm dev
 ```
 
-Apply D1 schema:
-
-```bash
-wrangler d1 execute youtube2podcast --file apps/worker/src/db/schema.sql
-```
-
-Set secrets:
-
-```bash
-wrangler secret put ADMIN_TOKEN
-wrangler secret put RSS_TOKEN
-wrangler secret put AUDIO_PROVIDER_API_KEY
-```
-
-## Development
-
-Worker:
-
-```bash
-pnpm dev:worker
-```
-
-Web:
+Optional H5 on Vite (proxies API to `vercel dev` on port 3000):
 
 ```bash
 pnpm dev:web
 ```
+
+## Vercel
+
+1. Create a Vercel project from this repo (root directory).
+2. Create a Blob store and link it to the project.
+3. Create a Supabase project, run `apps/worker/src/db/schema.sql`.
+4. Set environment variables (Production + Preview):
+
+```txt
+ADMIN_TOKEN
+RSS_TOKEN
+AUDIO_PROVIDER=rapidapi
+RAPIDAPI_KEY
+PUBLIC_BASE_URL=https://your-app.vercel.app
+SUPABASE_URL
+SUPABASE_SERVICE_ROLE_KEY
+BLOB_READ_WRITE_TOKEN
+VITE_API_BASE_URL=
+VITE_PUBLIC_RSS_URL=https://your-app.vercel.app/rss/<RSS_TOKEN>.xml
+```
+
+`VITE_*` are baked in at build time; change them then redeploy.
+
+5. Deploy. Open the H5, fill Admin Token, submit a YouTube URL.
 
 ## Apple Podcasts
 
 Subscribe to:
 
 ```txt
-https://your-worker-domain/rss/<rss-token>.xml
+https://your-app.vercel.app/rss/<rss-token>.xml
 ```
 
 ## Important privacy notes
 
 - Do not expose `ADMIN_TOKEN`.
-- Do not expose provider API keys in the H5 app.
-- R2 bucket should remain private.
-- RSS token can be rotated if leaked.
+- Do not expose `SUPABASE_SERVICE_ROLE_KEY` or provider API keys in the H5 app.
+- RSS token can be rotated if leaked (Blob paths include the token; old files stay reachable by URL).

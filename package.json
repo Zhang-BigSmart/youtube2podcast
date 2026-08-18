@@ -3,13 +3,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev:worker": "pnpm --filter @youtube2podcast/worker dev",
+    "dev": "npx --yes vercel dev",
     "dev:web": "pnpm --filter @youtube2podcast/web dev",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "build": "pnpm -r build"
   },
   "packageManager": "pnpm@9.15.0",
+  "dependencies": {
+    "@vercel/node": "^5.3.24"
+  },
   "devDependencies": {
     "typescript": "^5.5.4"
   }

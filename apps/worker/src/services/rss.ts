@@ -1,4 +1,3 @@
-import type { Env } from '../env'
 import type { EpisodeRecord } from '../db/episodes'
 
 function escapeXml(value: string): string {
@@ -17,9 +16,15 @@ function formatDuration(seconds: number): string {
   return [h, m, s].map((part) => String(part).padStart(2, '0')).join(':')
 }
 
-export function renderRss(episodes: EpisodeRecord[], env: Pick<Env, 'PUBLIC_BASE_URL' | 'RSS_TOKEN'>): string {
+/**
+ * 用途：把 episode 列表渲染成 Apple Podcasts 可用的 RSS 2.0。
+ * 入参：episodes（enclosure 使用 Blob 公开 URL）。
+ * 返回值：RSS XML 字符串。
+ * 异常：无。
+ * 边界：音频不经本服务代理，播放器直连 Blob。
+ */
+export function renderRss(episodes: EpisodeRecord[]): string {
   const items = episodes.map((episode) => {
-    const audioUrl = `${env.PUBLIC_BASE_URL}/media/${env.RSS_TOKEN}/${episode.id}/audio`
     const episodeImage = episode.thumbnail_url
       ? `<itunes:image href="${escapeXml(episode.thumbnail_url)}" />`
       : ''
@@ -33,7 +38,7 @@ export function renderRss(episodes: EpisodeRecord[], env: Pick<Env, 'PUBLIC_BASE
         <itunes:duration>${formatDuration(episode.duration_seconds)}</itunes:duration>
         <itunes:author>${escapeXml(episode.channel_title)}</itunes:author>
         ${episodeImage}
-        <enclosure url="${escapeXml(audioUrl)}" length="${episode.audio_file_size}" type="${escapeXml(episode.audio_mime_type)}" />
+        <enclosure url="${escapeXml(episode.blob_audio_url)}" length="${episode.audio_file_size}" type="${escapeXml(episode.audio_mime_type)}" />
       </item>`
   }).join('')
 

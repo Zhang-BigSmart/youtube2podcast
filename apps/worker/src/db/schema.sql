@@ -1,3 +1,5 @@
+-- 在 Supabase SQL Editor 中执行。service_role 绕过 RLS，anon 无策略即不可访问。
+
 CREATE TABLE IF NOT EXISTS jobs (
   id TEXT PRIMARY KEY,
   youtube_url TEXT NOT NULL,
@@ -23,10 +25,10 @@ CREATE TABLE IF NOT EXISTS episodes (
   description TEXT NOT NULL,
   channel_title TEXT NOT NULL,
   thumbnail_url TEXT,
-  r2_audio_key TEXT NOT NULL,
-  r2_image_key TEXT,
+  blob_audio_url TEXT NOT NULL,
+  blob_image_url TEXT,
   audio_mime_type TEXT NOT NULL,
-  audio_file_size INTEGER NOT NULL,
+  audio_file_size BIGINT NOT NULL,
   duration_seconds INTEGER NOT NULL,
   guid TEXT NOT NULL UNIQUE,
   published_at TEXT NOT NULL,
@@ -35,7 +37,5 @@ CREATE TABLE IF NOT EXISTS episodes (
 
 CREATE INDEX IF NOT EXISTS idx_episodes_created_at ON episodes (created_at);
 
-CREATE TABLE IF NOT EXISTS settings (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL
-);
+ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE episodes ENABLE ROW LEVEL SECURITY;
