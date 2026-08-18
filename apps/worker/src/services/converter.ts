@@ -5,6 +5,7 @@ import { insertEpisode } from '../db/episodes.js'
 import { createId } from '../ids.js'
 import { createAudioProvider } from '../providers/index.js'
 import type { AudioProviderResult } from '../providers/types.js'
+import { fetchYouTubeVideoMetadata, type YouTubeVideoMetadata } from './metadata.js'
 
 type StoredAudio = { size: number; contentType: string; url: string }
 
@@ -66,11 +67,27 @@ async function storeAudio(pathname: string, result: AudioProviderResult): Promis
 }
 
 /**
- * 用途：执行一条转换任务：提取音频、转存 Blob、写入 episode。
+ * 用途：获取官方元数据；未配 YOUTUBE_API_KEY 或调用失败时返回 null。
+ * 入参：Env、11 位 videoId。
+ * 返回值：YouTubeVideoMetadata 或 null。
+ * 异常：不向外抛；元数据失败不应阻断音频转换，调用方回退供应商兜底值。
+ */
+async function loadMetadata(env: Env, videoId: string): Promise<YouTubeVideoMetadata | null> {
+  if (!env.YOUTUBE_API_KEY) return null
+  try {
+    return await fetchYouTubeVideoMetadata(videoId, env.YOUTUBE_API_KEY)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 用途：执行一条转换任务：提取音频、获取元数据、转存 Blob、写入 episode。
  * 入参：jobId、Env。
  * 返回值：无。成功或失败都写回 Supabase 状态。
  * 异常：不向外抛；捕获后把 job 标为 failed。
- * 边界：已完成任务直接跳过；AUDIO_PROVIDER=rapidapi 时主失败会在供应商内部切备用。
+ * 边界：已完成任务直接跳过；AUDIO_PROVIDER=rapidapi 时主失败会在供应商内部切备用；
+ *       元数据优先取 YouTube Data API，失败或未配 key 时退回供应商返回值。
  */
 export async function convertJob(jobId: string, env: Env): Promise<void> {
   const job = await getJob(env, jobId)
@@ -81,7 +98,10 @@ export async function convertJob(jobId: string, env: Env): Promise<void> {
 
   try {
     const provider = createAudioProvider(env)
-    const result = await provider.extract(job.youtube_url)
+    const [result, metadata] = await Promise.all([
+      provider.extract(job.youtube_url),
+      loadMetadata(env, job.youtube_video_id)
+    ])
     await updateJobStatus(env, job.id, 'uploading', {
       provider: result.provider
     })
@@ -96,15 +116,15 @@ export async function convertJob(jobId: string, env: Env): Promise<void> {
       id: episodeId,
       youtube_video_id: job.youtube_video_id,
       youtube_url: job.youtube_url,
-      title: result.title ?? `YouTube ${job.youtube_video_id}`,
-      description: result.description ?? job.youtube_url,
-      channel_title: result.channelTitle ?? 'YouTube',
-      thumbnail_url: result.thumbnailUrl ?? null,
+      title: metadata?.title ?? result.title ?? `YouTube ${job.youtube_video_id}`,
+      description: metadata?.description ?? result.description ?? job.youtube_url,
+      channel_title: metadata?.channelTitle ?? result.channelTitle ?? 'YouTube',
+      thumbnail_url: metadata?.thumbnailUrl ?? result.thumbnailUrl ?? null,
       blob_audio_url: uploaded.url,
       blob_image_url: null,
       audio_mime_type: result.audioMimeType ?? uploaded.contentType,
       audio_file_size: result.audioFileSize ?? uploaded.size,
-      duration_seconds: result.durationSeconds ?? 0,
+      duration_seconds: metadata?.durationSeconds ?? result.durationSeconds ?? 0,
       guid: `youtube:${job.youtube_video_id}`,
       published_at: now,
       created_at: now

@@ -10,6 +10,8 @@ export type Env = {
   RSS_TOKEN: string
   AUDIO_PROVIDER: 'mock' | 'rapidapi'
   RAPIDAPI_KEY?: string
+  /** YouTube Data API v3 Key。未配置时跳过官方元数据获取，episode 使用供应商兜底值。 */
+  YOUTUBE_API_KEY?: string
   PUBLIC_BASE_URL: string
   SUPABASE_URL: string
   SUPABASE_SERVICE_ROLE_KEY: string
@@ -44,6 +46,7 @@ export function getEnv(): Env {
     RSS_TOKEN: required('RSS_TOKEN'),
     AUDIO_PROVIDER: process.env.AUDIO_PROVIDER === 'rapidapi' ? 'rapidapi' : 'mock',
     RAPIDAPI_KEY: process.env.RAPIDAPI_KEY,
+    YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
     PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL ?? '',
     SUPABASE_URL: required('SUPABASE_URL'),
     SUPABASE_SERVICE_ROLE_KEY: required('SUPABASE_SERVICE_ROLE_KEY')
