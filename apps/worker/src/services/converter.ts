@@ -6,6 +6,7 @@ import { createId } from '../ids.js'
 import { createAudioProvider } from '../providers/index.js'
 import type { AudioProviderResult } from '../providers/types.js'
 import { fetchYouTubeVideoMetadata, type YouTubeVideoMetadata } from './metadata.js'
+import { storeEpisodeCover } from './cover.js'
 
 type StoredAudio = { size: number; contentType: string; url: string }
 
@@ -86,7 +87,7 @@ async function loadMetadata(env: Env, videoId: string): Promise<YouTubeVideoMeta
  * 入参：jobId、Env。
  * 返回值：无。成功或失败都写回 Supabase 状态。
  * 异常：不向外抛；捕获后把 job 标为 failed。
- * 边界：已完成任务直接跳过；AUDIO_PROVIDER=rapidapi 时主失败会在供应商内部切备用；
+ * 边界：已完成任务直接跳过；封面处理失败不影响音频入库；
  *       元数据优先取 YouTube Data API，失败或未配 key 时退回供应商返回值。
  */
 export async function convertJob(jobId: string, env: Env): Promise<void> {
@@ -111,6 +112,9 @@ export async function convertJob(jobId: string, env: Env): Promise<void> {
     const pathname = `audio/${env.RSS_TOKEN}/${episodeId}.${extension}`
     const uploaded = await storeAudio(pathname, result)
 
+    const thumbnailUrl = metadata?.thumbnailUrl ?? result.thumbnailUrl ?? null
+    const blobImageUrl = await storeEpisodeCover(`images/${env.RSS_TOKEN}/${episodeId}.jpg`, thumbnailUrl)
+
     const now = new Date().toISOString()
     await insertEpisode(env, {
       id: episodeId,
@@ -119,9 +123,9 @@ export async function convertJob(jobId: string, env: Env): Promise<void> {
       title: metadata?.title ?? result.title ?? `YouTube ${job.youtube_video_id}`,
       description: metadata?.description ?? result.description ?? job.youtube_url,
       channel_title: metadata?.channelTitle ?? result.channelTitle ?? 'YouTube',
-      thumbnail_url: metadata?.thumbnailUrl ?? result.thumbnailUrl ?? null,
+      thumbnail_url: thumbnailUrl,
       blob_audio_url: uploaded.url,
-      blob_image_url: null,
+      blob_image_url: blobImageUrl,
       audio_mime_type: result.audioMimeType ?? uploaded.contentType,
       audio_file_size: result.audioFileSize ?? uploaded.size,
       duration_seconds: metadata?.durationSeconds ?? result.durationSeconds ?? 0,

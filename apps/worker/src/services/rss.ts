@@ -21,12 +21,14 @@ function formatDuration(seconds: number): string {
  * 入参：episodes（enclosure 使用 Blob 公开 URL）；channelImageUrl 为节目总封面绝对地址。
  * 返回值：RSS XML 字符串。
  * 异常：无。
- * 边界：音频不经本服务代理，播放器直连 Blob。未传 channelImageUrl 时不输出频道封面。
+ * 边界：音频不经本服务代理，播放器直连 Blob。单集封面优先 blob_image_url；
+ *       未传 channelImageUrl 时不输出频道封面。
  */
 export function renderRss(episodes: EpisodeRecord[], channelImageUrl?: string): string {
   const items = episodes.map((episode) => {
-    const episodeImage = episode.thumbnail_url
-      ? `<itunes:image href="${escapeXml(episode.thumbnail_url)}" />`
+    const episodeCover = episode.blob_image_url ?? episode.thumbnail_url
+    const episodeImage = episodeCover
+      ? `<itunes:image href="${escapeXml(episodeCover)}" />`
       : ''
 
     return `

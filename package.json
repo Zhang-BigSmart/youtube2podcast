@@ -10,6 +10,12 @@
     "build": "pnpm -r build"
   },
   "packageManager": "pnpm@9.15.0",
+  "pnpm": {
+    "supportedArchitectures": {
+      "os": ["current", "linux"],
+      "cpu": ["current", "x64", "arm64"]
+    }
+  },
   "dependencies": {
     "@vercel/node": "^5.3.24"
   },
