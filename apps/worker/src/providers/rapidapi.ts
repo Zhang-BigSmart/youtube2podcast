@@ -114,17 +114,15 @@ export class YoutubeToMp315Provider implements AudioProvider {
   constructor(private readonly apiKey: string) {}
 
   async extract(youtubeUrl: string): Promise<AudioProviderResult> {
-    const response = await fetch(`https://${YT15_HOST}/download`, {
+    // 供应商后端已改为从查询参数取值（JSON body 会报 400 缺 url），文档未更新。
+    const endpoint = new URL(`https://${YT15_HOST}/download`)
+    endpoint.searchParams.set('url', youtubeUrl)
+    endpoint.searchParams.set('format', 'm4a')
+    endpoint.searchParams.set('quality', '0')
+
+    const response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        ...rapidApiHeaders(this.apiKey, YT15_HOST),
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify({
-        url: youtubeUrl,
-        format: 'm4a',
-        quality: 0
-      })
+      headers: rapidApiHeaders(this.apiKey, YT15_HOST)
     })
 
     if (!response.ok) {
