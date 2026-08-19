@@ -4,6 +4,8 @@ const YT15_HOST = 'youtube-to-mp315.p.rapidapi.com'
 const DOWNLOAD_INFO_HOST = 'youtube-download-info-api.p.rapidapi.com'
 const YT15_POLL_INTERVAL_MS = 2000
 const YT15_POLL_MAX_ATTEMPTS = 15
+const DOWNLOAD_INFO_POLL_INTERVAL_MS = 3000
+const DOWNLOAD_INFO_POLL_MAX_ATTEMPTS = 40
 
 type JsonObject = Record<string, unknown>
 
@@ -180,11 +182,12 @@ export class YoutubeToMp315Provider implements AudioProvider {
 
 /**
  * 备用供应商：RapidAPI YouTube Download & Info。
- * 用途：主供应商失败后请求 m4a 直链或音频字节。
+ * 用途：主供应商失败后请求 m4a。实际契约为异步任务：首次返回
+ *       { success, id, image, progress_url }，需轮询 progress_url 直到出现下载地址。
  * 入参：RapidAPI Key。extract 入参为 YouTube URL。
- * 返回值：JSON 直链或 audioBytes。
- * 异常：HTTP 失败、JSON 无下载地址且也不是音频正文时抛错。
- * 边界：公开文档未固定成功字段名；默认时长上限约 120 分钟，超长访谈可能失败。
+ * 返回值：轮询拿到直链的 AudioProviderResult；兼容直接返回直链或音频正文的旧行为。
+ * 异常：HTTP 失败、任务报错（success=0，如 text=download_error）、轮询超时时抛错。
+ * 边界：progress_url 是供应商外部地址，无需 RapidAPI 头；最长轮询约 120 秒。
  */
 export class YoutubeDownloadInfoProvider implements AudioProvider {
   constructor(private readonly apiKey: string) {}
@@ -205,16 +208,22 @@ export class YoutubeDownloadInfoProvider implements AudioProvider {
     const contentType = response.headers.get('content-type') ?? ''
     if (contentType.includes('application/json') || contentType.includes('text/json')) {
       const data: unknown = await response.json()
-      const url = pickDownloadUrl(data)
-      if (!url) {
-        throw new Error('rapidapi-download-info JSON missing download url')
-      }
       const obj = asObject(data)
+
+      let url = pickDownloadUrl(data)
+      if (!url) {
+        const progressUrl = pickString(obj, ['progress_url', 'progressUrl'])
+        if (!progressUrl) {
+          throw new Error(`rapidapi-download-info JSON missing download url: ${JSON.stringify(data).slice(0, 300)}`)
+        }
+        url = await this.pollProgress(progressUrl)
+      }
+
       return {
         provider: 'rapidapi-download-info',
         title: pickString(obj, ['title', 'name']),
         channelTitle: pickString(obj, ['channelTitle', 'channel', 'uploader']),
-        thumbnailUrl: pickString(obj, ['thumbnail', 'thumbnailUrl', 'thumbnail_url']),
+        thumbnailUrl: pickString(obj, ['thumbnail', 'thumbnailUrl', 'thumbnail_url', 'image']),
         durationSeconds: pickNumber(obj, ['durationSeconds', 'duration_seconds', 'duration', 'lengthSeconds']),
         audioDownloadUrl: url,
         audioMimeType: mimeFromFormat(pickString(obj, ['format', 'ext']) ?? 'm4a'),
@@ -236,6 +245,35 @@ export class YoutubeDownloadInfoProvider implements AudioProvider {
     }
 
     throw new Error(`rapidapi-download-info unexpected content-type: ${contentType || 'empty'}`)
+  }
+
+  /**
+   * 用途：轮询 progress_url 直到转换完成并返回下载地址。
+   * 入参：首次响应里的 progress_url（供应商外部地址，直接 GET，无需鉴权头）。
+   * 返回值：可下载的音频直链。
+   * 异常：HTTP 失败、任务失败（success 为 0/false，如 text=download_error）、超过轮询次数时抛错。
+   */
+  private async pollProgress(progressUrl: string): Promise<string> {
+    for (let attempt = 0; attempt < DOWNLOAD_INFO_POLL_MAX_ATTEMPTS; attempt += 1) {
+      const response = await fetch(progressUrl)
+      if (!response.ok) {
+        await throwHttpError(response, 'rapidapi-download-info progress')
+      }
+
+      const data: unknown = await response.json()
+      const url = pickDownloadUrl(data)
+      if (url) return url
+
+      const obj = asObject(data)
+      if (obj.success === 0 || obj.success === false) {
+        const text = pickString(obj, ['text', 'message', 'error']) ?? 'unknown error'
+        throw new Error(`rapidapi-download-info progress failed: ${text}`)
+      }
+
+      await sleep(DOWNLOAD_INFO_POLL_INTERVAL_MS)
+    }
+
+    throw new Error('rapidapi-download-info progress timed out')
   }
 }
 
