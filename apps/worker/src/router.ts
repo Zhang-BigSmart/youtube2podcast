@@ -41,7 +41,8 @@ export async function handleRequest(
     const token = pathname.replace('/rss/', '').replace(/\.xml$/, '')
     if (!isValidToken(token, env.RSS_TOKEN)) return notFound()
     const episodes = await listEpisodes(env, 100)
-    return new Response(renderRss(episodes), {
+    const origin = (env.PUBLIC_BASE_URL || url.origin).replace(/\/$/, '')
+    return new Response(renderRss(episodes, `${origin}/youtube-icon.png`), {
       headers: { 'content-type': 'application/rss+xml; charset=utf-8' }
     })
   }

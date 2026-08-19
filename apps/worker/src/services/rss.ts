@@ -18,12 +18,12 @@ function formatDuration(seconds: number): string {
 
 /**
  * 用途：把 episode 列表渲染成 Apple Podcasts 可用的 RSS 2.0。
- * 入参：episodes（enclosure 使用 Blob 公开 URL）。
+ * 入参：episodes（enclosure 使用 Blob 公开 URL）；channelImageUrl 为节目总封面绝对地址。
  * 返回值：RSS XML 字符串。
  * 异常：无。
- * 边界：音频不经本服务代理，播放器直连 Blob。
+ * 边界：音频不经本服务代理，播放器直连 Blob。未传 channelImageUrl 时不输出频道封面。
  */
-export function renderRss(episodes: EpisodeRecord[]): string {
+export function renderRss(episodes: EpisodeRecord[], channelImageUrl?: string): string {
   const items = episodes.map((episode) => {
     const episodeImage = episode.thumbnail_url
       ? `<itunes:image href="${escapeXml(episode.thumbnail_url)}" />`
@@ -42,6 +42,15 @@ export function renderRss(episodes: EpisodeRecord[]): string {
       </item>`
   }).join('')
 
+  const channelImage = channelImageUrl
+    ? `<itunes:image href="${escapeXml(channelImageUrl)}" />
+    <image>
+      <url>${escapeXml(channelImageUrl)}</url>
+      <title>YouTube2Podcast</title>
+      <link>https://www.youtube.com/</link>
+    </image>`
+    : ''
+
   return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
   <channel>
@@ -49,6 +58,7 @@ export function renderRss(episodes: EpisodeRecord[]): string {
     <description>Private YouTube audio feed</description>
     <language>zh-cn</language>
     <itunes:author>YouTube2Podcast</itunes:author>
+    ${channelImage}
     ${items}
   </channel>
 </rss>`
