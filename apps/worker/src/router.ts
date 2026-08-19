@@ -6,8 +6,10 @@ import { createId } from './ids.js'
 import { getEpisodeByVideoId, listEpisodes } from './db/episodes.js'
 import { getJob, incrementAttempt, insertJob, listJobs } from './db/jobs.js'
 import { convertJob } from './services/converter.js'
+import { importEpisode, type ImportEpisodeInput } from './services/import-episode.js'
 import { renderRss } from './services/rss.js'
 import { serveAudio } from './services/media.js'
+import { createUploadToken } from './services/uploads.js'
 
 /**
  * 用途：把 Vercel 重写后的 /api/rss、/api/media 还原成业务路径。
@@ -53,6 +55,34 @@ export async function handleRequest(
 
   if (pathname.startsWith('/api/') && !isAuthorizedAdmin(request, env.ADMIN_TOKEN)) {
     return json({ error: 'unauthorized' }, { status: 401 })
+  }
+
+  if (request.method === 'POST' && pathname === '/api/uploads') {
+    const body = await readJsonBody(request) as { kind?: string; videoId?: string; contentType?: string }
+    const result = await createUploadToken(env, {
+      kind: body.kind ?? '',
+      videoId: body.videoId ?? '',
+      contentType: body.contentType ?? ''
+    })
+    if (!result.ok) {
+      return json({ error: result.error }, { status: result.status })
+    }
+    if ('alreadyExists' in result) {
+      return json({ alreadyExists: true, episodeId: result.episodeId }, { status: 200 })
+    }
+    return json({ token: result.token, pathname: result.pathname }, { status: 200 })
+  }
+
+  if (request.method === 'POST' && pathname === '/api/jobs/import') {
+    const body = await readJsonBody(request)
+    const result = await importEpisode(env, body as ImportEpisodeInput)
+    if (!result.ok) {
+      return json({ error: result.error }, { status: result.status })
+    }
+    if ('alreadyExists' in result) {
+      return json({ episodeId: result.episodeId, status: 'completed', alreadyExists: true }, { status: 200 })
+    }
+    return json({ episodeId: result.episodeId, jobId: result.jobId, status: 'completed' }, { status: 201 })
   }
 
   if (request.method === 'POST' && pathname === '/api/jobs') {
@@ -110,4 +140,22 @@ export async function handleRequest(
   }
 
   return text('YouTube2Podcast', { status: 200 })
+}
+
+/**
+ * 用途：读取 JSON 请求体；空或非法时返回空对象。
+ * 入参：Fetch Request。
+ * 返回值：解析后的对象。
+ * 异常：无；解析失败当空对象，由后续字段校验返回 400。
+ */
+async function readJsonBody(request: Request): Promise<Record<string, unknown>> {
+  try {
+    const body = await request.json() as unknown
+    if (body && typeof body === 'object' && !Array.isArray(body)) {
+      return body as Record<string, unknown>
+    }
+    return {}
+  } catch {
+    return {}
+  }
 }

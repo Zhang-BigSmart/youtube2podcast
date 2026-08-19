@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "npx --yes vercel dev",
     "dev:web": "pnpm --filter @youtube2podcast/web dev",
+    "build:extension": "pnpm --filter @youtube2podcast/extension build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "build": "pnpm -r build"

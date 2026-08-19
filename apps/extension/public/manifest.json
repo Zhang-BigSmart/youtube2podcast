@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "Y2P Extractor PoC",
+  "version": "0.1.4",
+  "description": "侧边栏用 youtubei.js 提取 YouTube 音频和元数据",
+  "action": {
+    "default_title": "Y2P 提取音频"
+  },
+  "side_panel": {
+    "default_path": "extract.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "sandbox": {
+    "pages": ["sandbox.html"]
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self';",
+    "sandbox": "sandbox allow-scripts; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; object-src 'self';"
+  },
+  "permissions": [
+    "sidePanel",
+    "tabs",
+    "cookies",
+    "storage",
+    "declarativeNetRequestWithHostAccess"
+  ],
+  "optional_host_permissions": [
+    "https://*/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "http://localhost:*/*",
+    "http://127.0.0.1:*/*"
+  ],
+  "host_permissions": [
+    "https://*.youtube.com/*",
+    "https://youtube.com/*",
+    "https://youtu.be/*",
+    "https://youtubei.googleapis.com/*",
+    "https://*.googleapis.com/*",
+    "https://*.googlevideo.com/*",
+    "https://*.ytimg.com/*",
+    "https://*.ggpht.com/*"
+  ]
+}

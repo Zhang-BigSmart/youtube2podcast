@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Y2P</title>
+  </head>
+  <body>
+    <div class="app">
+      <header class="top">
+        <p class="eyebrow">YouTube2Podcast</p>
+        <h1>提取</h1>
+      </header>
+
+      <form id="extract-form" class="composer">
+        <label class="field">
+          <span>链接</span>
+          <input id="url" type="text" placeholder="YouTube 链接或视频 ID" autocomplete="off" />
+        </label>
+        <button id="extract" type="submit">提取</button>
+      </form>
+
+      <div id="progress" class="progress" hidden>
+        <div class="progress-track">
+          <i id="progress-fill" class="progress-fill"></i>
+        </div>
+        <p id="progress-text">准备中</p>
+      </div>
+
+      <section id="result" class="result" hidden>
+        <div id="cover-stage" class="cover-stage">
+          <img id="cover-image" alt="封面" />
+          <div id="cover-crop" class="cover-crop" role="slider" aria-label="拖动选择正方形封面">
+            <i class="crop-corner tl"></i>
+            <i class="crop-corner tr"></i>
+            <i class="crop-corner bl"></i>
+            <i class="crop-corner br"></i>
+          </div>
+        </div>
+        <p class="cover-hint">拖动方框裁成 1:1 · 同步时导出 1400×1400</p>
+
+        <h2 id="title" class="title"></h2>
+        <p id="channel" class="channel"></p>
+        <p id="description" class="description"></p>
+
+        <dl class="specs">
+          <div>
+            <dt>时长</dt>
+            <dd id="duration">—</dd>
+          </div>
+          <div>
+            <dt>音频</dt>
+            <dd id="audio-type">—</dd>
+          </div>
+          <div>
+            <dt>大小</dt>
+            <dd id="audio-size">—</dd>
+          </div>
+          <div>
+            <dt>视频 ID</dt>
+            <dd id="video-id">—</dd>
+          </div>
+          <div>
+            <dt>来源</dt>
+            <dd id="audio-source">—</dd>
+          </div>
+        </dl>
+
+        <audio id="preview" class="preview" controls hidden></audio>
+      </section>
+
+      <p id="status" class="status" hidden></p>
+
+      <div class="sync-bar">
+        <label class="field">
+          <span>服务端</span>
+          <input id="server-url" type="text" placeholder="https://your-app.vercel.app" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>Admin Token</span>
+          <input id="admin-token" type="password" placeholder="与 H5 控制台相同" autocomplete="off" />
+        </label>
+        <button id="sync" type="button" disabled>同步</button>
+      </div>
+    </div>
+
+    <iframe id="yt-eval" src="./sandbox.html" hidden></iframe>
+    <script type="module" src="./src/extract.ts"></script>
+  </body>
+</html>
