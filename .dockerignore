@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+.git
+.cursor
+data
+**/data
+dist
+**/dist
+.env
+.env.*
+*.md
+apps/extension/dist
+.vercel

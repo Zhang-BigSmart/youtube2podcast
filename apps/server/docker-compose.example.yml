@@ -1,0 +1,16 @@
+# 在仓库根目录执行：
+# docker compose -f apps/server/docker-compose.example.yml up --build
+
+services:
+  y2p:
+    build:
+      context: ../..
+      dockerfile: apps/server/Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      RSS_TOKEN: change-me-rss-token
+      PUBLIC_BASE_URL: http://localhost:8080
+    restart: unless-stopped

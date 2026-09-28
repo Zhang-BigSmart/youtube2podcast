@@ -10,9 +10,25 @@ export default defineConfig({
   publicDir: 'public',
   plugins: [
     {
-      name: 'strip-crossorigin',
-      transformIndexHtml(html) {
-        return html.replace(/ crossorigin/g, '')
+      name: 'extension-html',
+      /**
+       * 去掉 crossorigin，并把模块脚本挪回 body 末尾，
+       * 避免扩展页等 head 里的大脚本执行完才首屏绘制。
+       */
+      transformIndexHtml: {
+        order: 'post',
+        handler(html) {
+          const stripped = html.replace(/ crossorigin/g, '')
+          const scripts: string[] = []
+          const withoutScripts = stripped.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, (tag) => {
+            scripts.push(tag)
+            return ''
+          })
+          if (scripts.length === 0) {
+            return stripped
+          }
+          return withoutScripts.replace('</body>', `${scripts.join('\n    ')}\n  </body>`)
+        }
       }
     }
   ],
@@ -20,6 +36,7 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
     sourcemap: true,
+    modulePreload: false,
     rollupOptions: {
       input: {
         extract: resolve(__dirname, 'extract.html'),

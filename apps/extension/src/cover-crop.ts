@@ -15,16 +15,25 @@ export class CoverCropper {
   #cropEl: HTMLElement
   #drag: { pointerId: number; grabX: number; grabY: number; startLeft: number; startTop: number } | null = null
   #resizeObserver: ResizeObserver
+  #savedCrop: SourceCrop | null = null
+  #onCropChange?: (crop: SourceCrop) => void
 
   /**
    * @param stage 封面舞台（裁剪框的定位根）
    * @param image 缩略图
    * @param cropEl 方形选择框
+   * @param onCropChange 拖动结束后的原图像素区域回调
    */
-  constructor(stage: HTMLElement, image: HTMLImageElement, cropEl: HTMLElement) {
+  constructor(
+    stage: HTMLElement,
+    image: HTMLImageElement,
+    cropEl: HTMLElement,
+    onCropChange?: (crop: SourceCrop) => void
+  ) {
     this.#stage = stage
     this.#image = image
     this.#cropEl = cropEl
+    this.#onCropChange = onCropChange
     this.#resizeObserver = new ResizeObserver(() => this.#layoutCrop(false))
     this.#cropEl.addEventListener('pointerdown', (event) => this.#onPointerDown(event))
     this.#cropEl.addEventListener('pointermove', (event) => this.#onPointerMove(event))
@@ -37,7 +46,7 @@ export class CoverCropper {
    */
   attach(): void {
     this.#resizeObserver.observe(this.#stage)
-    this.#image.addEventListener('load', () => this.#layoutCrop(true))
+    this.#image.addEventListener('load', () => this.#layoutCrop(this.#savedCrop == null))
   }
 
   /**
@@ -46,6 +55,7 @@ export class CoverCropper {
    * @returns 图片解码完成
    */
   async setSource(src: string): Promise<void> {
+    this.#savedCrop = null
     if (this.#image.src && this.#image.src.startsWith('blob:')) {
       URL.revokeObjectURL(this.#image.src)
     }
@@ -85,6 +95,16 @@ export class CoverCropper {
   }
 
   /**
+   * 按原图像素区域还原选择框，用于读取本地缓存。
+   * @param crop 原图上的正方形
+   * @throws 图片尚未布局完成
+   */
+  applySourceCrop(crop: SourceCrop): void {
+    this.#savedCrop = crop
+    this.#layoutCrop(false)
+  }
+
+  /**
    * 导出播客封面 JPEG。
    * @param edge 边长，默认 1400
    * @returns image/jpeg Blob
@@ -119,6 +139,10 @@ export class CoverCropper {
     if (displayed.width <= 0 || displayed.height <= 0) {
       return
     }
+    if (this.#savedCrop) {
+      this.#placeCropFromSource(this.#savedCrop, displayed)
+      return
+    }
     const size = Math.min(displayed.width, displayed.height)
     const maxLeft = displayed.left + displayed.width - size
     const maxTop = displayed.top + displayed.height - size
@@ -130,6 +154,26 @@ export class CoverCropper {
       left = clamp(current.left - stage.left, displayed.left, maxLeft)
       top = clamp(current.top - stage.top, displayed.top, maxTop)
     }
+    this.#cropEl.style.width = `${size}px`
+    this.#cropEl.style.height = `${size}px`
+    this.#cropEl.style.left = `${left}px`
+    this.#cropEl.style.top = `${top}px`
+  }
+
+  /**
+   * 把原图像素裁剪框映射到舞台坐标。
+   * @param crop 原图正方形
+   * @param displayed 图片在舞台内的绘制矩形
+   */
+  #placeCropFromSource(
+    crop: SourceCrop,
+    displayed: { left: number; top: number; width: number; height: number }
+  ): void {
+    const scaleX = displayed.width / this.#image.naturalWidth
+    const scaleY = displayed.height / this.#image.naturalHeight
+    const size = clamp(crop.size * scaleX, 1, Math.min(displayed.width, displayed.height))
+    const left = clamp(displayed.left + crop.sx * scaleX, displayed.left, displayed.left + displayed.width - size)
+    const top = clamp(displayed.top + crop.sy * scaleY, displayed.top, displayed.top + displayed.height - size)
     this.#cropEl.style.width = `${size}px`
     this.#cropEl.style.height = `${size}px`
     this.#cropEl.style.left = `${left}px`
@@ -208,6 +252,12 @@ export class CoverCropper {
       return
     }
     this.#drag = null
+    try {
+      this.#savedCrop = this.getSourceCrop()
+      this.#onCropChange?.(this.#savedCrop)
+    } catch {
+      // 布局未完成时不回写
+    }
   }
 }
 

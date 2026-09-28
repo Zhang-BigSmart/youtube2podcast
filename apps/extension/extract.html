@@ -8,17 +8,52 @@
   <body>
     <div class="app">
       <header class="top">
-        <p class="eyebrow">YouTube2Podcast</p>
-        <h1>提取</h1>
+        <div class="brand">
+          <span class="play-mark" aria-hidden="true"></span>
+          <span class="brand-name">Y2P</span>
+        </div>
+        <button id="settings-toggle" type="button" class="icon-btn" aria-label="设置" aria-expanded="true">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.1 7.1 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.59.22-1.14.53-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.48a.5.5 0 0 0 .12.64L4.86 10.7c-.04.31-.06.63-.06.94s.02.63.06.94L2.83 14.16a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.4.31.64.22l2.39-.96c.49.41 1.04.72 1.63.94l.36 2.54c.05.24.25.42.49.42h3.8c.24 0 .44-.18.49-.42l.36-2.54c.59-.22 1.14-.53 1.63-.94l2.39.96c.24.09.51 0 .64-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7Z"/>
+          </svg>
+        </button>
       </header>
+
+      <section id="settings-body" class="settings-drawer">
+        <p id="version-hint" class="version-hint" hidden></p>
+        <label class="field">
+          <span>服务端</span>
+          <input id="server-url" type="text" value="http://localhost:8080" placeholder="http://localhost:8080" autocomplete="off" />
+        </label>
+        <label class="field">
+          <span>RSS Token</span>
+          <input id="admin-token" type="password" placeholder="与 .env 中 RSS_TOKEN 相同" autocomplete="off" />
+        </label>
+        <p class="token-hint">这一把密钥用来连接服务端，也写在播客订阅地址里。别人拿到就能听你的节目。</p>
+        <p id="connection-status" class="connection-status">未连接</p>
+        <button id="connect-server" type="button" class="btn-connect">连接</button>
+        <label id="rss-field" class="field" hidden>
+          <span>订阅地址</span>
+          <p id="rss-url" class="rss-url"></p>
+        </label>
+        <div id="connected-extras" hidden>
+          <p id="cookie-status" class="cookie-status">尚未同步登录态</p>
+          <button id="push-cookies" type="button" class="btn-ghost">同步登录态</button>
+          <p id="cookies-hint" class="cookies-hint">提交时会把当前 Chrome 的 YouTube 登录态同步到服务端。</p>
+        </div>
+      </section>
 
       <form id="extract-form" class="composer">
         <label class="field">
           <span>链接</span>
           <input id="url" type="text" placeholder="YouTube 链接或视频 ID" autocomplete="off" />
         </label>
-        <button id="extract" type="submit">提取</button>
+        <button id="submit-job" type="submit" disabled>添加到播客</button>
+        <button id="extract" type="button" class="link-btn">本地提取</button>
+        <button id="reextract" type="button" class="link-btn" hidden>重新提取</button>
       </form>
+
+      <p id="status" class="status" hidden></p>
 
       <div id="progress" class="progress" hidden>
         <div class="progress-track">
@@ -27,7 +62,7 @@
         <p id="progress-text">准备中</p>
       </div>
 
-      <section id="result" class="result" hidden>
+      <section id="result" class="extract-card" hidden>
         <div id="cover-stage" class="cover-stage">
           <img id="cover-image" alt="封面" />
           <div id="cover-crop" class="cover-crop" role="slider" aria-label="拖动选择正方形封面">
@@ -37,51 +72,41 @@
             <i class="crop-corner br"></i>
           </div>
         </div>
-        <p class="cover-hint">拖动方框裁成 1:1 · 同步时导出 1400×1400</p>
-
+        <p class="cover-hint">拖动方框裁成 1:1</p>
         <h2 id="title" class="title"></h2>
         <p id="channel" class="channel"></p>
-        <p id="description" class="description"></p>
-
-        <dl class="specs">
-          <div>
-            <dt>时长</dt>
-            <dd id="duration">—</dd>
-          </div>
-          <div>
-            <dt>音频</dt>
-            <dd id="audio-type">—</dd>
-          </div>
-          <div>
-            <dt>大小</dt>
-            <dd id="audio-size">—</dd>
-          </div>
-          <div>
-            <dt>视频 ID</dt>
-            <dd id="video-id">—</dd>
-          </div>
-          <div>
-            <dt>来源</dt>
-            <dd id="audio-source">—</dd>
-          </div>
-        </dl>
-
+        <p id="duration" class="duration-line">—</p>
+        <details class="extract-more">
+          <summary>详情</summary>
+          <p id="description" class="description"></p>
+          <dl class="specs">
+            <div>
+              <dt>音频</dt>
+              <dd id="audio-type">—</dd>
+            </div>
+            <div>
+              <dt>大小</dt>
+              <dd id="audio-size">—</dd>
+            </div>
+            <div>
+              <dt>视频 ID</dt>
+              <dd id="video-id">—</dd>
+            </div>
+            <div>
+              <dt>来源</dt>
+              <dd id="audio-source">—</dd>
+            </div>
+          </dl>
+        </details>
         <audio id="preview" class="preview" controls hidden></audio>
+        <button id="sync" type="button" disabled>上传到播客</button>
       </section>
 
-      <p id="status" class="status" hidden></p>
-
-      <div class="sync-bar">
-        <label class="field">
-          <span>服务端</span>
-          <input id="server-url" type="text" placeholder="https://your-app.vercel.app" autocomplete="off" />
-        </label>
-        <label class="field">
-          <span>Admin Token</span>
-          <input id="admin-token" type="password" placeholder="与 H5 控制台相同" autocomplete="off" />
-        </label>
-        <button id="sync" type="button" disabled>同步</button>
-      </div>
+      <section class="recent">
+        <h2 class="recent-heading">最近</h2>
+        <p id="jobs-empty" class="jobs-empty">暂无节目</p>
+        <div id="jobs-list"></div>
+      </section>
     </div>
 
     <iframe id="yt-eval" src="./sandbox.html" hidden></iframe>

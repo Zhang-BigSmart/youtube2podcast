@@ -8,7 +8,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@vercel/blob": "^2.8.0",
     "youtubei.js": "^18.0.0"
   },
   "devDependencies": {

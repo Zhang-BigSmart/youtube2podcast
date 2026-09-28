@@ -3,6 +3,13 @@ const DB_VERSION = 1
 const STORE_NAME = 'audio'
 const EXPIRE_MS = 24 * 60 * 60 * 1000
 
+/** 封面在原图上的正方形区域，单位为原图像素。 */
+export type StoredCoverCrop = {
+  sx: number
+  sy: number
+  size: number
+}
+
 /** 侧边栏暂存的音频与元数据，上传成功或超过 24 小时后删除。 */
 export type TempAudioRecord = {
   videoId: string
@@ -18,6 +25,8 @@ export type TempAudioRecord = {
   itag: number
   hasVideo: boolean
   blob: Blob
+  thumbBlob?: Blob
+  crop?: StoredCoverCrop
   coverBlob?: Blob
   createdAt: number
 }
@@ -59,17 +68,50 @@ export async function getTempAudio(videoId: string): Promise<TempAudioRecord | n
 }
 
 /**
+ * 读取未过期且带音频的暂存，供提取命中缓存。
+ * @param videoId YouTube 视频 ID
+ * @returns 可用记录；没有、过期或没有音频时 null
+ * @throws IndexedDB 读取失败
+ */
+export async function getValidTempAudio(videoId: string): Promise<TempAudioRecord | null> {
+  const record = await getTempAudio(videoId)
+  if (!record) {
+    return null
+  }
+  if (record.createdAt < Date.now() - EXPIRE_MS) {
+    return null
+  }
+  if (!record.blob || record.blob.size <= 0) {
+    return null
+  }
+  return record
+}
+
+/**
+ * 把部分字段写回已有暂存记录。
+ * @param videoId YouTube 视频 ID
+ * @param patch 要合并的字段
+ * @throws 记录不存在或写入失败
+ */
+export async function patchTempAudio(
+  videoId: string,
+  patch: Partial<Pick<TempAudioRecord, 'thumbBlob' | 'crop' | 'coverBlob'>>
+): Promise<void> {
+  const existing = await getTempAudio(videoId)
+  if (!existing) {
+    throw new Error('没有对应的暂存音频，请先提取')
+  }
+  await saveTempAudio({ ...existing, ...patch })
+}
+
+/**
  * 把裁切后的封面 JPEG 写回已有暂存记录。
  * @param videoId YouTube 视频 ID
  * @param coverBlob 1400×1400 JPEG
  * @throws 记录不存在或写入失败
  */
 export async function updateTempCover(videoId: string, coverBlob: Blob): Promise<void> {
-  const existing = await getTempAudio(videoId)
-  if (!existing) {
-    throw new Error('没有对应的暂存音频，请先提取')
-  }
-  await saveTempAudio({ ...existing, coverBlob })
+  await patchTempAudio(videoId, { coverBlob })
 }
 
 /**

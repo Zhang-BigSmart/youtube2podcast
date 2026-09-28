@@ -3,8 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "npx --yes vercel dev",
-    "dev:web": "pnpm --filter @youtube2podcast/web dev",
+    "dev": "pnpm --filter @youtube2podcast/server dev",
     "build:extension": "pnpm --filter @youtube2podcast/extension build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
@@ -16,9 +15,6 @@
       "os": ["current", "linux"],
       "cpu": ["current", "x64", "arm64"]
     }
-  },
-  "dependencies": {
-    "@vercel/node": "^5.3.24"
   },
   "devDependencies": {
     "@types/node": "^22.15.3",
