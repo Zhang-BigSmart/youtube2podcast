@@ -2,7 +2,7 @@ import { serve } from '@hono/node-server'
 import { createApp } from './app.js'
 import { loadConfig } from './config.js'
 import type { AppContext } from './context.js'
-import { cleanupTmp } from './core/cleanup.js'
+import { cleanupJobTmp, cleanupTmp } from './core/cleanup.js'
 import { ensureDataDirs } from './core/paths.js'
 import { JobQueue } from './core/queue.js'
 import { runJob } from './core/runner.js'
@@ -21,6 +21,7 @@ function main(): void {
   const config = loadConfig()
   ensureDataDirs(config.DATA_DIR)
   const db = openDb(config.DATA_DIR)
+  cleanupJobTmp(config.DATA_DIR)
   cleanupTmp(config.DATA_DIR)
 
   const ctx: AppContext = {
